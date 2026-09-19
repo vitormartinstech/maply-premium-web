@@ -23,10 +23,12 @@ export default function PremiumPage() {
   const [emailLogin, setEmailLogin] = useState('');
   const [senhaLogin, setSenhaLogin] = useState('');
   const [loadingAuth, setLoadingAuth] = useState(true); 
+  const [mostrarSenha, setMostrarSenha] = useState(false); // NOVO: Controle do olhinho da senha
 
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [vagasOcupadas, setVagasOcupadas] = useState(0);
   const [estadoUsuario, setEstadoUsuario] = useState('GO');
+  const [isPremium, setIsPremium] = useState(false); // NOVO: Controle se o usuário já pagou
   const limiteVagas = 50;
   
   const [menuAberto, setMenuAberto] = useState(false);
@@ -47,9 +49,15 @@ export default function PremiumPage() {
   useEffect(() => {
     if (user) {
       async function carregarDadosDoUsuario() {
-        const { data } = await supabase.from('profiles').select('estado').eq('id', user.id).single();
+        // NOVO: Agora busca também a coluna 'is_premium' (ou o nome que você usar no seu banco)
+        const { data } = await supabase.from('profiles').select('estado, is_premium').eq('id', user.id).single();
         const uf = data?.estado || 'GO';
         setEstadoUsuario(uf);
+        
+        // Se a coluna is_premium for verdadeira, marcamos ele como premium
+        if (data?.is_premium) {
+          setIsPremium(true);
+        }
 
         try {
           const response = await fetch(`/api/vagas?estado=${uf}`);
@@ -94,7 +102,7 @@ export default function PremiumPage() {
     setLoadingAuth(false);
   };
 
-  // LINK MÁGICO (SALVA-VIDAS)
+  // LINK MÁGICO
   const handleMagicLink = async () => {
     if (!emailLogin.trim()) {
       alert("Por favor, digite seu e-mail no campo acima primeiro.");
@@ -114,6 +122,7 @@ export default function PremiumPage() {
     setLoadingAuth(false);
   };
 
+  // COMPRAR PLANO (ATUALIZADO)
   const handleSubscribe = async (planName: string, preco: number) => {
     setProcessingPlan(planName);
     try {
@@ -124,10 +133,45 @@ export default function PremiumPage() {
       });
 
       const data = await response.json();
-      if (data.init_point) window.location.href = data.init_point; 
-      else alert("Erro ao gerar link de pagamento.");
+      if (data.init_point) {
+        // NOVO: Abre o Mercado Pago em uma aba separada
+        window.open(data.init_point, '_blank');
+      } else {
+        alert("Erro ao gerar link de pagamento.");
+      }
     } catch (error) {
       alert("Erro de conexão.");
+    } finally {
+      // NOVO: Destrava o botão logo em seguida para o usuário não ficar preso
+      setProcessingPlan(null); 
+    }
+  };
+
+  // NOVO: FUNÇÃO DE CANCELAR ASSINATURA (ATUALIZADA)
+  const handleCancel = async () => {
+    const confirmar = confirm("Tem certeza que deseja cancelar sua assinatura? Você deixará de ser Premium ao final do período.");
+    if (!confirmar) return;
+
+    setProcessingPlan('cancelar');
+    try {
+      // Chama a sua API de cancelar enviando o ID e o E-mail
+      const response = await fetch('/api/cancelar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: user.id,
+          userEmail: user.email 
+        })
+      });
+
+      if (response.ok) {
+        alert("Assinatura cancelada com sucesso!");
+        setIsPremium(false); // Atualiza a tela para remover os benefícios visualmente
+      } else {
+        alert("Erro ao cancelar. Tente novamente mais tarde.");
+      }
+    } catch (error) {
+      alert("Erro de conexão ao tentar cancelar.");
     } finally {
       setProcessingPlan(null);
     }
@@ -149,6 +193,16 @@ export default function PremiumPage() {
   const MinusIcon = () => (
     <svg className="w-5 h-5 flex-shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+
+  const EyeIcon = ({ visible }: { visible: boolean }) => (
+    <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      {visible ? (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+      )}
     </svg>
   );
 
@@ -182,17 +236,28 @@ export default function PremiumPage() {
                 placeholder="seu@email.com"
               />
             </div>
+            
+            {/* NOVO: CAMPO DE SENHA COM OLHINHO */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-sm font-bold text-gray-700">Senha</label>
               </div>
-              <input 
-                type="password" 
-                value={senhaLogin}
-                onChange={(e) => setSenhaLogin(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:border-[#0066FF] transition-colors"
-                placeholder="••••••"
-              />
+              <div className="relative">
+                <input 
+                  type={mostrarSenha ? "text" : "password"} 
+                  value={senhaLogin}
+                  onChange={(e) => setSenhaLogin(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pr-12 text-gray-900 focus:outline-none focus:border-[#0066FF] transition-colors"
+                  placeholder="••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  <EyeIcon visible={mostrarSenha} />
+                </button>
+              </div>
             </div>
             
             <button 
@@ -301,6 +366,23 @@ export default function PremiumPage() {
       {/* CONTEÚDO PRINCIPAL */}
       <main className="max-w-[1200px] mx-auto px-4 pt-12">
         
+        {/* NOVO: AVISO E BOTÃO DE CANCELAR SE FOR PREMIUM */}
+        {isPremium && (
+          <div className="max-w-3xl mx-auto bg-emerald-50 border border-emerald-200 p-6 rounded-2xl mb-12 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
+            <div>
+              <h3 className="text-emerald-800 font-bold text-lg">🎉 Você é um usuário Premium!</h3>
+              <p className="text-emerald-600 text-sm mt-1">Todos os seus benefícios exclusivos já estão ativados e funcionando.</p>
+            </div>
+            <button
+              onClick={handleCancel}
+              disabled={processingPlan === 'cancelar'}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-6 rounded-xl transition-colors shadow-md text-sm whitespace-nowrap"
+            >
+              {processingPlan === 'cancelar' ? 'Processando...' : 'Cancelar Assinatura'}
+            </button>
+          </div>
+        )}
+
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Evolua o seu negócio</h2>
           <p className="text-gray-500 text-lg max-w-xl mx-auto">Escolha como deseja aparecer para os seus futuros clientes em {estadoUsuario} e destrave o seu potencial.</p>
@@ -342,13 +424,20 @@ export default function PremiumPage() {
                 ))}
               </ul>
               
-              <button 
-                onClick={() => handleSubscribe('Plano Fundador', 149.99)}
-                disabled={processingPlan !== null}
-                className="w-full bg-[#FCD34D] hover:bg-amber-300 text-[#3B0764] font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
-              >
-                {processingPlan === 'Plano Fundador' ? 'Processando...' : 'Garantir Minha Vaga'}
-              </button>
+              {/* NOVO: SE FOR PREMIUM, MUDA O BOTÃO */}
+              {isPremium ? (
+                <button disabled className="w-full bg-slate-700/50 text-slate-400 font-bold py-4 rounded-2xl cursor-not-allowed mt-auto">
+                  Benefício Ativo
+                </button>
+              ) : (
+                <button 
+                  onClick={() => handleSubscribe('Plano Fundador', 149.99)}
+                  disabled={processingPlan !== null}
+                  className="w-full bg-[#FCD34D] hover:bg-amber-300 text-[#3B0764] font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
+                >
+                  {processingPlan === 'Plano Fundador' ? 'Processando...' : 'Garantir Minha Vaga'}
+                </button>
+              )}
             </div>
           )}
 
@@ -385,13 +474,19 @@ export default function PremiumPage() {
               ))}
             </ul>
             
-            <button 
-              onClick={() => handleSubscribe('Plano Elite Anual', 282.50)}
-              disabled={processingPlan !== null}
-              className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
-            >
-               {processingPlan === 'Plano Elite Anual' ? 'Processando...' : 'Assinar Elite Anual'}
-            </button>
+            {isPremium ? (
+              <button disabled className="w-full bg-slate-700/50 text-slate-400 font-bold py-4 rounded-2xl cursor-not-allowed mt-auto">
+                Benefício Ativo
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSubscribe('Plano Elite Anual', 282.50)}
+                disabled={processingPlan !== null}
+                className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
+              >
+                {processingPlan === 'Plano Elite Anual' ? 'Processando...' : 'Assinar Elite Anual'}
+              </button>
+            )}
           </div>
 
           {/* CARD ELITE MENSAL */}
@@ -422,13 +517,19 @@ export default function PremiumPage() {
               ))}
             </ul>
             
-            <button 
-              onClick={() => handleSubscribe('Plano Elite Mensal', 29.99)}
-              disabled={processingPlan !== null}
-              className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
-            >
-               {processingPlan === 'Plano Elite Mensal' ? 'Processando...' : 'Assinar Elite Mensal'}
-            </button>
+            {isPremium ? (
+              <button disabled className="w-full bg-slate-700/50 text-slate-400 font-bold py-4 rounded-2xl cursor-not-allowed mt-auto">
+                Benefício Ativo
+              </button>
+            ) : (
+              <button 
+                onClick={() => handleSubscribe('Plano Elite Mensal', 29.99)}
+                disabled={processingPlan !== null}
+                className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
+              >
+                {processingPlan === 'Plano Elite Mensal' ? 'Processando...' : 'Assinar Elite Mensal'}
+              </button>
+            )}
           </div>
 
         </div>
@@ -468,4 +569,4 @@ export default function PremiumPage() {
       </main>
     </div>
   );
-} 
+}
