@@ -19,9 +19,12 @@ export async function POST(request: Request) {
     if (tipoAviso === 'payment' && idPagamento) {
       const payment = new Payment(client);
       const detalhesDoPagamento = await payment.get({ id: idPagamento });
+      
+      // Pegamos o ID do usuário que guardamos na referência externa na hora da compra
+      const userId = detalhesDoPagamento.external_reference;
 
+      // CENÁRIO 1: PAGAMENTO APROVADO (Sua lógica original)
       if (detalhesDoPagamento.status === 'approved') {
-        const userId = detalhesDoPagamento.external_reference;
         
         // Pagamentos únicos têm 'items'. Assinaturas (PreApproval) vêm sem essa lista.
         const itensComprados = detalhesDoPagamento.additional_info?.items;
@@ -52,6 +55,23 @@ export async function POST(request: Request) {
 
           if (error) throw error;
           console.log(`Sucesso: Pagamento processado para o usuário ${userId}. Plano: ${planoCompradoId}`);
+        }
+      } 
+      
+      // CENÁRIO 2: PAGAMENTO CANCELADO, DEVOLVIDO OU RECUSADO (Nova Automação)
+      else if (['cancelled', 'refunded', 'charged_back', 'rejected'].includes(detalhesDoPagamento.status || '')) {
+        if (userId) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              is_premium: false, 
+              tipo_plano: null, 
+              data_expiracao_premium: null 
+            })
+            .eq('id', userId);
+
+          if (error) throw error;
+          console.log(`Atenção: Premium removido do usuário ${userId}. Motivo: Pagamento ${detalhesDoPagamento.status}`);
         }
       }
     }
