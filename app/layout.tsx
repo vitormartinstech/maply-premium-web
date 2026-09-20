@@ -13,20 +13,27 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Maply | Encontre os Melhores Profissionais",
-  description: "O melhor diretório para encontrar profissionais qualificados perto de você. Destaque o seu negócio ou encontre o serviço que precisa rapidamente.",
+  title: "Maply | Destaque seus Serviços e Atraia Mais Clientes",
+  description: "A plataforma ideal para profissionais e autônomos. Assine o Maply Premium, posicione o seu negócio no topo das buscas e receba orçamentos diretos.",
   keywords: [
-    "serviços", 
-    "profissionais", 
-    "mapa de negócios", 
-    "encontrar serviços", 
+    "divulgar serviços", 
+    "captar clientes", 
+    "diretório comercial", 
+    "marketing para autônomos", 
+    "anunciar negócios", 
     "Maply", 
     "Goiânia", 
     "Goiás"
   ],
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Se o seu Next.js estiver a pedir o tipo LayoutProps, certifique-se de que ele está definido, 
+// ou use a tipagem padrão do React como abaixo para evitar erros:
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html
       lang="pt-BR"

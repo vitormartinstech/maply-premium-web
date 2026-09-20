@@ -23,12 +23,12 @@ export default function PremiumPage() {
   const [emailLogin, setEmailLogin] = useState('');
   const [senhaLogin, setSenhaLogin] = useState('');
   const [loadingAuth, setLoadingAuth] = useState(true); 
-  const [mostrarSenha, setMostrarSenha] = useState(false); // NOVO: Controle do olhinho da senha
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
   const [vagasOcupadas, setVagasOcupadas] = useState(0);
   const [estadoUsuario, setEstadoUsuario] = useState('GO');
-  const [isPremium, setIsPremium] = useState(false); // NOVO: Controle se o usuário já pagou
+  const [isPremium, setIsPremium] = useState(false);
   const limiteVagas = 50;
   
   const [menuAberto, setMenuAberto] = useState(false);
@@ -49,12 +49,10 @@ export default function PremiumPage() {
   useEffect(() => {
     if (user) {
       async function carregarDadosDoUsuario() {
-        // NOVO: Agora busca também a coluna 'is_premium' (ou o nome que você usar no seu banco)
         const { data } = await supabase.from('profiles').select('estado, is_premium').eq('id', user.id).single();
         const uf = data?.estado || 'GO';
         setEstadoUsuario(uf);
         
-        // Se a coluna is_premium for verdadeira, marcamos ele como premium
         if (data?.is_premium) {
           setIsPremium(true);
         }
@@ -122,7 +120,7 @@ export default function PremiumPage() {
     setLoadingAuth(false);
   };
 
-  // COMPRAR PLANO (ATUALIZADO)
+  // COMPRAR PLANO
   const handleSubscribe = async (planName: string, preco: number) => {
     setProcessingPlan(planName);
     try {
@@ -134,7 +132,6 @@ export default function PremiumPage() {
 
       const data = await response.json();
       if (data.init_point) {
-        // NOVO: Abre o Mercado Pago em uma aba separada
         window.open(data.init_point, '_blank');
       } else {
         alert("Erro ao gerar link de pagamento.");
@@ -142,19 +139,17 @@ export default function PremiumPage() {
     } catch (error) {
       alert("Erro de conexão.");
     } finally {
-      // NOVO: Destrava o botão logo em seguida para o usuário não ficar preso
       setProcessingPlan(null); 
     }
   };
 
-  // NOVO: FUNÇÃO DE CANCELAR ASSINATURA (ATUALIZADA)
+  // CANCELAR ASSINATURA
   const handleCancel = async () => {
     const confirmar = confirm("Tem certeza que deseja cancelar sua assinatura? Você deixará de ser Premium ao final do período.");
     if (!confirmar) return;
 
     setProcessingPlan('cancelar');
     try {
-      // Chama a sua API de cancelar enviando o ID e o E-mail
       const response = await fetch('/api/cancelar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -166,7 +161,7 @@ export default function PremiumPage() {
 
       if (response.ok) {
         alert("Assinatura cancelada com sucesso!");
-        setIsPremium(false); // Atualiza a tela para remover os benefícios visualmente
+        setIsPremium(false);
       } else {
         alert("Erro ao cancelar. Tente novamente mais tarde.");
       }
@@ -206,6 +201,32 @@ export default function PremiumPage() {
     </svg>
   );
 
+  // NOVO: COMPONENTE DOS BOTÕES DAS LOJAS
+  const StoreButtons = () => (
+    <div className="flex flex-wrap items-center justify-center gap-4">
+      {/* Coloque o link real do seu app na Apple Store no href="#" */}
+      <a href="#" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
+        <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.17 2.31-.93 3.57-.84 1.51.15 2.65.72 3.4 1.8-3.04 1.75-2.5 5.92.51 7.14-.65 1.55-1.57 3-2.56 4.07zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        <div className="text-left">
+          <div className="text-[10px] leading-none text-gray-300">Descarregar na</div>
+          <div className="text-sm font-bold leading-tight">App Store</div>
+        </div>
+      </a>
+      {/* Coloque o link real do seu app na Google Play no href="#" */}
+      <a href="#" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
+        <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+          <path d="M4 3.25c-.2.2-.3.51-.3.91v15.68c0 .4.1.71.3.91l.06.06 8.35-8.35v-.26L4.06 3.19l-.06.06zm8.88 8.88l1.81 1.81-2.95 1.7-7.46 4.29c-.24.14-.52.22-.8.22-.3 0-.58-.09-.81-.25l10.21-7.77zm0-.26l-10.2-7.77c.23-.16.51-.25.81-.25.28 0 .56.08.8.22l7.46 4.29 2.95 1.7-1.82 1.81zm2.34 2.34l-1.81-1.81v-.26l1.81-1.81 2.16 1.23c.69.39.69 1.03 0 1.42l-2.16 1.23z" />
+        </svg>
+        <div className="text-left">
+          <div className="text-[10px] leading-none text-gray-300">DISPONÍVEL NO</div>
+          <div className="text-sm font-bold leading-tight">Google Play</div>
+        </div>
+      </a>
+    </div>
+  );
+
   // --- TELA DE CARREGAMENTO ---
   if (loadingAuth && !user) {
     return (
@@ -219,10 +240,20 @@ export default function PremiumPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-[#F8F9FE] flex flex-col items-center justify-center px-4 font-sans py-12">
+        
+        {/* NOVO: Header de Boas-Vindas para quem vem do Google */}
+        <div className="text-center mb-10 max-w-lg">
+          <h1 className="text-5xl font-bold text-[#0066FF] mb-4 tracking-tight">Maply</h1>
+          <p className="text-gray-600 text-lg mb-6 leading-relaxed">
+            A plataforma ideal para destacar os seus serviços. Se ainda não tem conta, baixe o nosso aplicativo gratuito para começar:
+          </p>
+          <StoreButtons />
+        </div>
+
         <div className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-[#0066FF]">Maply</h1>
-            <p className="text-gray-500 mt-2 text-sm">Faça login com sua conta profissional para assinar o Premium.</p>
+            <h2 className="text-2xl font-bold text-gray-900">Já tem conta?</h2>
+            <p className="text-gray-500 mt-2 text-sm">Faça login para gerir ou assinar o seu plano Premium.</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
@@ -237,7 +268,6 @@ export default function PremiumPage() {
               />
             </div>
             
-            {/* NOVO: CAMPO DE SENHA COM OLHINHO */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
                 <label className="block text-sm font-bold text-gray-700">Senha</label>
@@ -366,7 +396,6 @@ export default function PremiumPage() {
       {/* CONTEÚDO PRINCIPAL */}
       <main className="max-w-[1200px] mx-auto px-4 pt-12">
         
-        {/* NOVO: AVISO E BOTÃO DE CANCELAR SE FOR PREMIUM */}
         {isPremium && (
           <div className="max-w-3xl mx-auto bg-emerald-50 border border-emerald-200 p-6 rounded-2xl mb-12 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
             <div>
@@ -385,7 +414,10 @@ export default function PremiumPage() {
 
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Evolua o seu negócio</h2>
-          <p className="text-gray-500 text-lg max-w-xl mx-auto">Escolha como deseja aparecer para os seus futuros clientes em {estadoUsuario} e destrave o seu potencial.</p>
+          <p className="text-gray-500 text-lg max-w-xl mx-auto mb-8">Escolha como deseja aparecer para os seus futuros clientes em {estadoUsuario} e destrave o seu potencial.</p>
+          
+          {/* NOVO: Adicionado também aqui para reforçar a presença do app */}
+          <StoreButtons />
         </div>
 
         <div className="flex flex-col lg:flex-row flex-wrap justify-center gap-6 items-stretch">
@@ -424,7 +456,6 @@ export default function PremiumPage() {
                 ))}
               </ul>
               
-              {/* NOVO: SE FOR PREMIUM, MUDA O BOTÃO */}
               {isPremium ? (
                 <button disabled className="w-full bg-slate-700/50 text-slate-400 font-bold py-4 rounded-2xl cursor-not-allowed mt-auto">
                   Benefício Ativo
