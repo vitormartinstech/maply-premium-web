@@ -1,31 +1,36 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, PreApproval, Preference } from 'mercadopago';
+import { PLANOS, usuarioLogado } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { userId, userEmail, plano, preco } = body;
+    // Quem está comprando vem do login conferido, nunca do que o navegador diz
+    const user = await usuarioLogado(request);
+    if (!user) return NextResponse.json({ error: 'Faça login para assinar' }, { status: 401 });
 
-    if (!userId) return NextResponse.json({ error: 'Usuário não identificado' }, { status: 400 });
+    const { plano } = await request.json();
 
-    let planIdInterno = 'mensal';
-    if (plano.includes('Fundador')) planIdInterno = 'fundador';
-    else if (plano.includes('Anual')) planIdInterno = 'anual';
+    // O preço vem da tabela do servidor (o navegador só informa o nome do plano)
+    const planoEscolhido = PLANOS[plano];
+    if (!planoEscolhido) return NextResponse.json({ error: 'Plano inválido' }, { status: 400 });
+
+    const planIdInterno = planoEscolhido.id;
+    const userId = user.id;
 
     // 1. SE FOR O PLANO MENSAL -> GERA ASSINATURA (DÉBITO AUTOMÁTICO)
-    if (plano.includes('Mensal')) {
+    if (planIdInterno === 'mensal') {
       const preApproval = new PreApproval(client);
       const resposta = await preApproval.create({
         body: {
-          reason: plano || 'Maply Premium - Assinatura Mensal',
+          reason: plano,
           external_reference: userId,
-          payer_email: userEmail || 'email@teste.com',
+          payer_email: user.email as string,
           auto_recurring: {
             frequency: 1,
             frequency_type: 'months',
-            transaction_amount: Number(preco) || 29.99,
+            transaction_amount: planoEscolhido.preco,
             currency_id: 'BRL'
           },
           back_url: 'https://maply.com.br/sucesso',
@@ -43,9 +48,9 @@ export async function POST(request: Request) {
           items: [
             {
               id: planIdInterno,
-              title: plano || 'Maply Premium',
+              title: plano,
               quantity: 1,
-              unit_price: Number(preco),
+              unit_price: planoEscolhido.preco,
               currency_id: 'BRL',
             }
           ],

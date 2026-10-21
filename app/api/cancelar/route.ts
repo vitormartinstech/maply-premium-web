@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, PreApproval } from 'mercadopago';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin as supabase, usuarioLogado } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 export async function POST(request: Request) {
   try {
-    const { userId, userEmail } = await request.json();
+    // Só o próprio usuário logado pode cancelar a assinatura dele
+    const user = await usuarioLogado(request);
+    if (!user) return NextResponse.json({ error: 'Faça login para cancelar' }, { status: 401 });
 
-    if (!userId) return NextResponse.json({ error: 'Usuário não identificado' }, { status: 400 });
+    const userId = user.id;
+    const userEmail = user.email;
 
     // 1. PROCURA E CANCELA A ASSINATURA NO MERCADO PAGO
     if (userEmail) {

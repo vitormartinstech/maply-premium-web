@@ -121,13 +121,23 @@ export default function PremiumPage() {
   };
 
   // COMPRAR PLANO
-  const handleSubscribe = async (planName: string, preco: number) => {
+  // Envia o token de login para o servidor conferir quem está pedindo
+  const cabecalhosAutenticados = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session?.access_token ?? ''}`,
+    };
+  };
+
+  // COMPRAR PLANO (o preço é definido pelo servidor, não aqui)
+  const handleSubscribe = async (planName: string) => {
     setProcessingPlan(planName);
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plano: planName, preco: preco, userId: user.id, userEmail: user.email })
+        headers: await cabecalhosAutenticados(),
+        body: JSON.stringify({ plano: planName })
       });
 
       const data = await response.json();
@@ -152,11 +162,7 @@ export default function PremiumPage() {
     try {
       const response = await fetch('/api/cancelar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId: user.id,
-          userEmail: user.email 
-        })
+        headers: await cabecalhosAutenticados(),
       });
 
       if (response.ok) {
@@ -462,7 +468,7 @@ export default function PremiumPage() {
                 </button>
               ) : (
                 <button 
-                  onClick={() => handleSubscribe('Plano Fundador', 149.99)}
+                  onClick={() => handleSubscribe('Plano Fundador')}
                   disabled={processingPlan !== null}
                   className="w-full bg-[#FCD34D] hover:bg-amber-300 text-[#3B0764] font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
                 >
@@ -511,7 +517,7 @@ export default function PremiumPage() {
               </button>
             ) : (
               <button 
-                onClick={() => handleSubscribe('Plano Elite Anual', 282.50)}
+                onClick={() => handleSubscribe('Plano Elite Anual')}
                 disabled={processingPlan !== null}
                 className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
               >
@@ -554,7 +560,7 @@ export default function PremiumPage() {
               </button>
             ) : (
               <button 
-                onClick={() => handleSubscribe('Plano Elite Mensal', 29.99)}
+                onClick={() => handleSubscribe('Plano Elite Mensal')}
                 disabled={processingPlan !== null}
                 className="w-full bg-[#F59E0B] hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-2xl transition-all shadow-lg mt-auto"
               >

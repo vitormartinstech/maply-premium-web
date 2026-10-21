@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin as supabase, PRECO_POR_ID } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 export async function POST(request: Request) {
   try {
@@ -33,6 +30,14 @@ export async function POST(request: Request) {
         const planoCompradoId = (itensComprados && itensComprados.length > 0) 
           ? itensComprados[0].id 
           : 'mensal';
+
+        // Segunda trava: só libera o Premium se o valor pago cobrir o preço oficial do plano
+        const precoOficial = PRECO_POR_ID[planoCompradoId as string];
+        const valorPago = detalhesDoPagamento.transaction_amount ?? 0;
+        if (!precoOficial || valorPago < precoOficial - 0.01) {
+          console.warn(`Pagamento ${idPagamento} ignorado: plano "${planoCompradoId}", pago R$ ${valorPago}, esperado R$ ${precoOficial}`);
+          return NextResponse.json({ recebido: true }, { status: 200 });
+        }
 
         // Motor de tempo
         let mesesParaAdicionar = 1; // Mensal (Débito automático renova por +30 dias a cada cobrança)
