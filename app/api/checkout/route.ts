@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, PreApproval, Preference } from 'mercadopago';
-import { PLANOS, usuarioLogado } from '../_lib/seguranca';
+import { PLANOS, SITE_URL, usuarioLogado } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
             transaction_amount: planoEscolhido.preco,
             currency_id: 'BRL'
           },
-          back_url: 'https://maply.com.br/sucesso',
+          back_url: `${SITE_URL}/pagamento?resultado=assinatura`,
           status: 'pending'
         }
       });
@@ -56,13 +56,13 @@ export async function POST(request: Request) {
           ],
           external_reference: userId,
           back_urls: {
-            success: 'https://maply.com.br/sucesso',
-            failure: 'https://maply.com.br/erro',
-            pending: 'https://maply.com.br/pendente'
+            success: `${SITE_URL}/pagamento?resultado=sucesso`,
+            failure: `${SITE_URL}/pagamento?resultado=erro`,
+            pending: `${SITE_URL}/pagamento?resultado=pendente`
           },
           auto_return: 'approved',
-          // Lembre-se de trocar pela URL oficial da Vercel depois
-          // notification_url: 'https://sua-url-na-vercel.com/api/webhook'
+          // Avisa o servidor quando o pagamento for aprovado (é isso que liga o Premium)
+          notification_url: `${SITE_URL}/api/webhook`
         }
       });
       return NextResponse.json({ init_point: resposta.init_point });

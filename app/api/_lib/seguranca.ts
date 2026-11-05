@@ -1,5 +1,9 @@
 import { createClient, User } from '@supabase/supabase-js';
 
+// Endereço do site. maply.com.br é de OUTRA empresa: não usar.
+// Quando houver domínio próprio, basta trocar aqui (ou definir NEXT_PUBLIC_SITE_URL na Vercel).
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://maply-premium-web.vercel.app';
+
 // Preços oficiais: o navegador só escolhe o plano, quem define o valor é o servidor.
 // Se mudar um preço aqui, atualize também o texto exibido em app/page.tsx.
 export const PLANOS: Record<string, { id: 'fundador' | 'anual' | 'mensal'; preco: number }> = {
