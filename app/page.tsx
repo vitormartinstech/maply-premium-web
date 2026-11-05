@@ -29,6 +29,10 @@ export default function PremiumPage() {
   const [vagasOcupadas, setVagasOcupadas] = useState(0);
   const [estadoUsuario, setEstadoUsuario] = useState('GO');
   const [isPremium, setIsPremium] = useState(false);
+  // De onde veio o Premium: 'mensal', 'mensal_cancelado', 'anual', 'fundador' (site)
+  // ou null quando foi assinado pelo app (Apple/Google)
+  const [tipoPlano, setTipoPlano] = useState<string | null>(null);
+  const [expiraEm, setExpiraEm] = useState<string | null>(null);
   const limiteVagas = 50;
   
   const [menuAberto, setMenuAberto] = useState(false);
@@ -49,13 +53,18 @@ export default function PremiumPage() {
   useEffect(() => {
     if (user) {
       async function carregarDadosDoUsuario() {
-        const { data } = await supabase.from('profiles').select('estado, is_premium').eq('id', user.id).single();
+        // meu_perfil() devolve o perfil completo do próprio usuário (tipo_plano e vencimento são privados)
+        const { data } = await supabase.rpc('meu_perfil').maybeSingle<{
+          estado: string | null;
+          is_premium: boolean | null;
+          tipo_plano: string | null;
+          data_expiracao_premium: string | null;
+        }>();
         const uf = data?.estado || 'GO';
         setEstadoUsuario(uf);
-        
-        if (data?.is_premium) {
-          setIsPremium(true);
-        }
+        setIsPremium(!!data?.is_premium);
+        setTipoPlano(data?.tipo_plano ?? null);
+        setExpiraEm(data?.data_expiracao_premium ?? null);
 
         try {
           const response = await fetch(`/api/vagas?estado=${uf}`);
@@ -153,9 +162,10 @@ export default function PremiumPage() {
     }
   };
 
-  // CANCELAR ASSINATURA
+  // CANCELAR A RENOVAÇÃO DO PLANO MENSAL (o Premium continua até a data já paga)
   const handleCancel = async () => {
-    const confirmar = confirm("Tem certeza que deseja cancelar sua assinatura? Você deixará de ser Premium ao final do período.");
+    const ate = expiraEm ? ` até ${formatarData(expiraEm)}` : ' até o fim do mês já pago';
+    const confirmar = confirm(`Cancelar a renovação automática? Nada mais será cobrado e você continua Premium${ate}.`);
     if (!confirmar) return;
 
     setProcessingPlan('cancelar');
@@ -166,8 +176,8 @@ export default function PremiumPage() {
       });
 
       if (response.ok) {
-        alert("Assinatura cancelada com sucesso!");
-        setIsPremium(false);
+        alert(`Renovação cancelada. Você continua Premium${ate}.`);
+        setTipoPlano('mensal_cancelado');
       } else {
         alert("Erro ao cancelar. Tente novamente mais tarde.");
       }
@@ -184,6 +194,16 @@ export default function PremiumPage() {
   };
 
   const mostrarPlanoFundador = vagasOcupadas < limiteVagas;
+
+  const formatarData = (iso: string) =>
+    new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const NOME_PLANO: Record<string, string> = {
+    mensal: 'Elite Mensal',
+    mensal_cancelado: 'Elite Mensal',
+    anual: 'Elite Anual',
+    fundador: 'Fundador (2 anos)',
+  };
 
   const CheckIcon = ({ color }: { color: string }) => (
     <svg className={`w-5 h-5 flex-shrink-0 ${color}`} fill="currentColor" viewBox="0 0 20 20">
@@ -405,16 +425,25 @@ export default function PremiumPage() {
         {isPremium && (
           <div className="max-w-3xl mx-auto bg-emerald-50 border border-emerald-200 p-6 rounded-2xl mb-12 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-sm">
             <div>
-              <h3 className="text-emerald-800 font-bold text-lg">🎉 Você é um usuário Premium!</h3>
-              <p className="text-emerald-600 text-sm mt-1">Todos os seus benefícios exclusivos já estão ativados e funcionando.</p>
+              <h3 className="text-emerald-800 font-bold text-lg">
+                🎉 Você é Premium{tipoPlano && NOME_PLANO[tipoPlano] ? ` · ${NOME_PLANO[tipoPlano]}` : ''}
+              </h3>
+              <p className="text-emerald-700 text-sm mt-1">
+                {tipoPlano === 'mensal' && 'Renova automaticamente todo mês. Você pode cancelar quando quiser.'}
+                {tipoPlano === 'mensal_cancelado' && `Renovação cancelada. Você continua Premium${expiraEm ? ` até ${formatarData(expiraEm)}` : ' até o fim do mês já pago'}.`}
+                {(tipoPlano === 'anual' || tipoPlano === 'fundador') && `Pagamento único, sem renovação automática. Válido${expiraEm ? ` até ${formatarData(expiraEm)}` : ''}.`}
+                {!tipoPlano && 'Sua assinatura foi feita pelo aplicativo. Para gerenciar ou cancelar, use a loja do celular: no iPhone, Ajustes › seu nome › Assinaturas; no Android, Play Store › Perfil › Pagamentos e assinaturas.'}
+              </p>
             </div>
-            <button
-              onClick={handleCancel}
-              disabled={processingPlan === 'cancelar'}
-              className="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-6 rounded-xl transition-colors shadow-md text-sm whitespace-nowrap"
-            >
-              {processingPlan === 'cancelar' ? 'Processando...' : 'Cancelar Assinatura'}
-            </button>
+            {tipoPlano === 'mensal' && (
+              <button
+                onClick={handleCancel}
+                disabled={processingPlan === 'cancelar'}
+                className="bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold py-2.5 px-6 rounded-xl transition-colors text-sm whitespace-nowrap"
+              >
+                {processingPlan === 'cancelar' ? 'Processando...' : 'Cancelar renovação'}
+              </button>
+            )}
           </div>
         )}
 

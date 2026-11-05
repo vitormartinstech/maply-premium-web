@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# chave secreta da Apple (nunca enviar ao Git)
+gerar-chave-apple.js
+*.p8

@@ -4,51 +4,51 @@ import { supabaseAdmin as supabase, usuarioLogado } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
 
+// Cancela só a cobrança automática do plano mensal comprado no site.
+// O Premium continua até a data já paga; quem tira o Premium depois é a rotina diária
+// do banco (expirar_premium_vencido). Anual e Fundador são pagamento único: não há o
+// que cancelar. Assinaturas feitas pelo app são canceladas na loja (Apple/Google).
 export async function POST(request: Request) {
   try {
-    // Só o próprio usuário logado pode cancelar a assinatura dele
     const user = await usuarioLogado(request);
     if (!user) return NextResponse.json({ error: 'Faça login para cancelar' }, { status: 401 });
 
-    const userId = user.id;
-    const userEmail = user.email;
+    const { data: perfil, error: erroPerfil } = await supabase
+      .from('profiles')
+      .select('tipo_plano, data_expiracao_premium')
+      .eq('id', user.id)
+      .single();
+    if (erroPerfil) throw erroPerfil;
 
-    // 1. PROCURA E CANCELA A ASSINATURA NO MERCADO PAGO
-    if (userEmail) {
+    if (perfil?.tipo_plano !== 'mensal') {
+      return NextResponse.json({ error: 'Não há cobrança mensal ativa para cancelar' }, { status: 400 });
+    }
+
+    // Procura a assinatura com débito automático ativa e manda cancelar no Mercado Pago
+    if (user.email) {
       const preApproval = new PreApproval(client);
-      
-      // Busca se o usuário tem alguma assinatura com débito automático ativa
-      const busca = await preApproval.search({ 
-        options: { payer_email: userEmail, status: 'authorized' } 
+      const busca = await preApproval.search({
+        options: { payer_email: user.email, status: 'authorized' }
       });
 
-      // Se encontrar a assinatura rolando no cartão, envia o comando de cancelamento
-      if (busca.results && busca.results.length > 0) {
-        for (const assinatura of busca.results) {
-          if (assinatura.id) {
-            await preApproval.update({ 
-              id: assinatura.id, 
-              body: { status: 'cancelled' } 
-            });
-            console.log(`Cobrança automática cancelada no MP para a assinatura ${assinatura.id}`);
-          }
+      for (const assinatura of busca.results ?? []) {
+        const referencia = assinatura.external_reference ? String(assinatura.external_reference) : '';
+        const ehDesteUsuario = !referencia || referencia === user.id;
+        if (assinatura.id && ehDesteUsuario) {
+          await preApproval.update({ id: assinatura.id, body: { status: 'cancelled' } });
+          console.log(`Cobrança automática cancelada no MP para a assinatura ${assinatura.id}`);
         }
       }
     }
 
-    // 2. REMOVE O PREMIUM NO SUPABASE
+    // Marca como cancelada, mas mantém o Premium e a data de vencimento
     const { error } = await supabase
       .from('profiles')
-      .update({ 
-        is_premium: false, 
-        tipo_plano: null, 
-        data_expiracao_premium: null 
-      })
-      .eq('id', userId);
-
+      .update({ tipo_plano: 'mensal_cancelado' })
+      .eq('id', user.id);
     if (error) throw error;
 
-    return NextResponse.json({ sucesso: true, mensagem: 'Assinatura cancelada com sucesso' });
+    return NextResponse.json({ sucesso: true, ativoAte: perfil.data_expiracao_premium });
 
   } catch (error) {
     console.error("Erro ao cancelar assinatura:", error);
