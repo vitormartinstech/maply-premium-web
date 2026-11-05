@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, PreApproval, Preference } from 'mercadopago';
-import { PLANOS, SITE_URL, usuarioLogado } from '../_lib/seguranca';
+import { PLANOS, SITE_URL, supabaseAdmin, usuarioLogado } from '../_lib/seguranca';
 
 const client = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN as string });
 
@@ -9,6 +9,19 @@ export async function POST(request: Request) {
     // Quem está comprando vem do login conferido, nunca do que o navegador diz
     const user = await usuarioLogado(request);
     if (!user) return NextResponse.json({ error: 'Faça login para assinar' }, { status: 401 });
+
+    // Igual ao app: só prestador de serviço assina, e quem já é Premium não paga de novo
+    const { data: perfil } = await supabaseAdmin
+      .from('profiles')
+      .select('is_prestador, is_premium')
+      .eq('id', user.id)
+      .single();
+    if (!perfil?.is_prestador) {
+      return NextResponse.json({ error: 'Apenas prestadores de serviço podem assinar' }, { status: 403 });
+    }
+    if (perfil.is_premium) {
+      return NextResponse.json({ error: 'Você já é Premium' }, { status: 409 });
+    }
 
     const { plano } = await request.json();
 

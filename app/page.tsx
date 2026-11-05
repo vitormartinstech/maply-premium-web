@@ -7,16 +7,34 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// Mesmos textos da tela de planos do app (maply_aplicativo/app/planos-assinatura.tsx)
 const premiumFeatures = [
-  'Contatos Ilimitados (Sem teto de 10 leads/mês)',
+  'Contatos ilimitados: clientes novos sem gastar créditos',
   'Prioridade Máxima nas buscas e "Precisa para agora"',
   'Selo Diamante e destaques visuais nas listas',
   'Central de Inteligência (Heatmap e Concorrência)',
   'Monitor de Favoritos (Descubra quem te salvou)',
   'Suporte VIP priorizado via WhatsApp',
-  'Remova as propagandas do seu perfil',
+  'Remova as propagandas do seu perfil, levando o cliente direto para o seu WhatsApp sem barreiras!',
   'Direito ao card personalizado'
 ];
+
+const gratuitoFeatures: { texto: string; ok: boolean }[] = [
+  { texto: '10 clientes novos grátis por mês; depois, 1 crédito por cliente novo', ok: true },
+  { texto: 'Cadastro e listagem simples no mapa', ok: true },
+  { texto: 'Prioridade de visibilidade nas Buscas', ok: false },
+  { texto: 'Acesso à Central de Inteligência', ok: false },
+  { texto: 'Selo Diamante e Destaques Visuais', ok: false },
+  { texto: 'Suporte VIP no WhatsApp', ok: false },
+  { texto: 'Remova as propagandas do seu perfil', ok: false },
+  { texto: 'Direito ao card personalizado', ok: false },
+];
+
+// Botões das lojas: ficam escondidos até o lançamento público do app.
+// No lançamento: troque para true e preencha o link da App Store.
+const LOJAS_LIBERADAS = false;
+const LINK_GOOGLE_PLAY = 'https://play.google.com/store/apps/details?id=br.com.maplyservices';
+const LINK_APP_STORE = ''; // ex.: https://apps.apple.com/br/app/maply/id0000000000
 
 export default function PremiumPage() {
   const [user, setUser] = useState<any>(null);
@@ -29,6 +47,8 @@ export default function PremiumPage() {
   const [vagasOcupadas, setVagasOcupadas] = useState(0);
   const [estadoUsuario, setEstadoUsuario] = useState('GO');
   const [isPremium, setIsPremium] = useState(false);
+  // Igual ao app: só prestador de serviço pode assinar
+  const [isPrestador, setIsPrestador] = useState(false);
   // De onde veio o Premium: 'mensal', 'mensal_cancelado', 'anual', 'fundador' (site)
   // ou null quando foi assinado pelo app (Apple/Google)
   const [tipoPlano, setTipoPlano] = useState<string | null>(null);
@@ -57,12 +77,14 @@ export default function PremiumPage() {
         const { data } = await supabase.rpc('meu_perfil').maybeSingle<{
           estado: string | null;
           is_premium: boolean | null;
+          is_prestador: boolean | null;
           tipo_plano: string | null;
           data_expiracao_premium: string | null;
         }>();
         const uf = data?.estado || 'GO';
         setEstadoUsuario(uf);
         setIsPremium(!!data?.is_premium);
+        setIsPrestador(!!data?.is_prestador);
         setTipoPlano(data?.tipo_plano ?? null);
         setExpiraEm(data?.data_expiracao_premium ?? null);
 
@@ -141,6 +163,10 @@ export default function PremiumPage() {
 
   // COMPRAR PLANO (o preço é definido pelo servidor, não aqui)
   const handleSubscribe = async (planName: string) => {
+    if (!isPrestador) {
+      alert('Apenas prestadores de serviço podem assinar os planos de crescimento. Cadastre seu negócio no app Maply primeiro.');
+      return;
+    }
     setProcessingPlan(planName);
     try {
       const response = await fetch('/api/checkout', {
@@ -227,21 +253,21 @@ export default function PremiumPage() {
     </svg>
   );
 
-  // NOVO: COMPONENTE DOS BOTÕES DAS LOJAS
-  const StoreButtons = () => (
+  // BOTÕES DAS LOJAS (só aparecem quando LOJAS_LIBERADAS = true; cada um só se tiver link)
+  const StoreButtons = () => !LOJAS_LIBERADAS ? null : (
     <div className="flex flex-wrap items-center justify-center gap-4">
-      {/* Coloque o link real do seu app na Apple Store no href="#" */}
-      <a href="#" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
+      {LINK_APP_STORE && (
+      <a href={LINK_APP_STORE} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
         <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
           <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.17 2.31-.93 3.57-.84 1.51.15 2.65.72 3.4 1.8-3.04 1.75-2.5 5.92.51 7.14-.65 1.55-1.57 3-2.56 4.07zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
         </svg>
         <div className="text-left">
-          <div className="text-[10px] leading-none text-gray-300">Descarregar na</div>
+          <div className="text-[10px] leading-none text-gray-300">Baixar na</div>
           <div className="text-sm font-bold leading-tight">App Store</div>
         </div>
       </a>
-      {/* Coloque o link real do seu app na Google Play no href="#" */}
-      <a href="#" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
+      )}
+      <a href={LINK_GOOGLE_PLAY} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-black text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 transition-colors shadow-md">
         <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
           <path d="M4 3.25c-.2.2-.3.51-.3.91v15.68c0 .4.1.71.3.91l.06.06 8.35-8.35v-.26L4.06 3.19l-.06.06zm8.88 8.88l1.81 1.81-2.95 1.7-7.46 4.29c-.24.14-.52.22-.8.22-.3 0-.58-.09-.81-.25l10.21-7.77zm0-.26l-10.2-7.77c.23-.16.51-.25.81-.25.28 0 .56.08.8.22l7.46 4.29 2.95 1.7-1.82 1.81zm2.34 2.34l-1.81-1.81v-.26l1.81-1.81 2.16 1.23c.69.39.69 1.03 0 1.42l-2.16 1.23z" />
         </svg>
@@ -271,7 +297,9 @@ export default function PremiumPage() {
         <div className="text-center mb-10 max-w-lg">
           <h1 className="text-5xl font-bold text-[#0066FF] mb-4 tracking-tight">Maply</h1>
           <p className="text-gray-600 text-lg mb-6 leading-relaxed">
-            A plataforma ideal para destacar os seus serviços. Se ainda não tem conta, baixe o nosso aplicativo gratuito para começar:
+            {LOJAS_LIBERADAS
+              ? 'A plataforma ideal para destacar os seus serviços. Se ainda não tem conta, baixe o nosso aplicativo gratuito para começar:'
+              : 'A plataforma ideal para destacar os seus serviços. O aplicativo chega em breve à App Store e ao Google Play.'}
           </p>
           <StoreButtons />
         </div>
@@ -447,6 +475,13 @@ export default function PremiumPage() {
           </div>
         )}
 
+        {!isPremium && !isPrestador && (
+          <div className="max-w-3xl mx-auto bg-blue-50 border border-blue-100 p-5 rounded-2xl mb-10 text-center">
+            <p className="text-[#0052CC] font-bold">Os planos são para prestadores de serviço</p>
+            <p className="text-blue-700/80 text-sm mt-1">Cadastre seu negócio no app Maply e depois volte aqui para assinar.</p>
+          </div>
+        )}
+
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Evolua o seu negócio</h2>
           <p className="text-gray-500 text-lg max-w-xl mx-auto mb-8">Escolha como deseja aparecer para os seus futuros clientes em {estadoUsuario} e destrave o seu potencial.</p>
@@ -609,10 +644,12 @@ export default function PremiumPage() {
               <span className="text-gray-500 text-sm font-medium"> /sempre</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-6">
-              <div className="flex items-start gap-3"><CheckIcon color="text-emerald-500" /><span className="text-gray-600 text-sm">Até 10 contatos de clientes</span></div>
-              <div className="flex items-start gap-3"><CheckIcon color="text-emerald-500" /><span className="text-gray-600 text-sm">Cadastro simples no mapa</span></div>
-              <div className="flex items-start gap-3"><MinusIcon /><span className="text-gray-400 text-sm">Visibilidade nas Buscas</span></div>
-              <div className="flex items-start gap-3"><MinusIcon /><span className="text-gray-400 text-sm">Central de Inteligência</span></div>
+              {gratuitoFeatures.map((item) => (
+                <div key={item.texto} className="flex items-start gap-3">
+                  {item.ok ? <CheckIcon color="text-emerald-500" /> : <MinusIcon />}
+                  <span className={`text-sm ${item.ok ? 'text-gray-600' : 'text-gray-400'}`}>{item.texto}</span>
+                </div>
+              ))}
             </div>
           </div>
           <div className="w-full md:w-auto">
