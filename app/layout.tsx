@@ -1,34 +1,34 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Mesmas fontes do app: Montserrat nos títulos, Inter no texto
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
   subsets: ["latin"],
+  weight: ["700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "Maply | Destaque seus Serviços e Atraia Mais Clientes",
-  description: "A plataforma ideal para profissionais e autônomos. Assine o Maply Premium, posicione o seu negócio no topo das buscas e receba orçamentos diretos.",
+  title: "Maply Premium | Seu negócio no topo do mapa",
+  description: "Assine o Maply Premium: apareça primeiro nas buscas do bairro, receba clientes novos sem limite e veja quem salvou o seu perfil.",
   keywords: [
-    "divulgar serviços", 
-    "captar clientes", 
-    "diretório comercial", 
-    "marketing para autônomos", 
-    "anunciar negócios", 
-    "Maply", 
-    "Goiânia", 
-    "Goiás"
+    "divulgar serviços",
+    "captar clientes",
+    "anunciar negócio local",
+    "marketing para autônomos",
+    "prestadores de serviço",
+    "Maply",
+    "Maply Premium"
   ],
 };
 
-// Se o seu Next.js estiver a pedir o tipo LayoutProps, certifique-se de que ele está definido, 
-// ou use a tipagem padrão do React como abaixo para evitar erros:
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -37,7 +37,7 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${montserrat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
