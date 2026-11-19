@@ -63,20 +63,27 @@ export async function POST(request: Request) {
         }
       } 
       
-      // CENÁRIO 2: PAGAMENTO CANCELADO, DEVOLVIDO OU RECUSADO (Nova Automação)
-      else if (['cancelled', 'refunded', 'charged_back', 'rejected'].includes(detalhesDoPagamento.status || '')) {
+      // CENÁRIO 2: DINHEIRO DEVOLVIDO (reembolso ou estorno no cartão)
+      // Só isso tira o Premium. Pagamento recusado, cancelado ou Pix vencido nunca ligou nada,
+      // então não desliga nada: a pessoa pode ter gerado um Pix, desistido e pago no cartão.
+      // E só mexe em Premium comprado no site (tipo_plano preenchido); o da loja é do RevenueCat.
+      else if (['refunded', 'charged_back'].includes(detalhesDoPagamento.status || '')) {
         if (userId) {
-          const { error } = await supabase
+          const { data: removidos, error } = await supabase
             .from('profiles')
-            .update({ 
-              is_premium: false, 
-              tipo_plano: null, 
-              data_expiracao_premium: null 
+            .update({
+              is_premium: false,
+              tipo_plano: null,
+              data_expiracao_premium: null
             })
-            .eq('id', userId);
+            .eq('id', userId)
+            .not('tipo_plano', 'is', null)
+            .select('id');
 
           if (error) throw error;
-          console.log(`Atenção: Premium removido do usuário ${userId}. Motivo: Pagamento ${detalhesDoPagamento.status}`);
+          if (removidos?.length) {
+            console.log(`Atenção: Premium removido do usuário ${userId}. Motivo: pagamento ${idPagamento} ${detalhesDoPagamento.status}`);
+          }
         }
       }
     }

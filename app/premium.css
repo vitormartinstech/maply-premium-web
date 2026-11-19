@@ -296,3 +296,24 @@ details p { margin: 0 0 20px; color: var(--sc-ink-soft); line-height: 1.65; max-
 .suporte { display: inline-flex; align-items: center; gap: 8px; color: #F2F6FF; }
 .entrar-cel { background: transparent; font: inherit; cursor: pointer; }
 .login { margin: auto; max-height: calc(100dvh - 32px); overflow: auto; } /* o reset do Tailwind zera a margem que centraliza o <dialog> */
+
+/* ---------- baixar o app (App Store; Google Play mostra o aviso de "em breve") ---------- */
+.lojas { display: flex; flex-direction: column; gap: 10px; }
+.lojas__botoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.loja { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px 0 14px; border-radius: 12px; border: 1px solid transparent; background: #000000; color: #FFFFFF; font: inherit; text-decoration: none; cursor: pointer; transition: transform 120ms var(--sc-ease-out), background-color 160ms var(--sc-ease-out); }
+.loja:hover { background: #1F2937; }
+.loja:active { transform: translateY(1px) scale(0.98); }
+.loja:focus-visible { outline: 3px solid #7FB2FF; outline-offset: 3px; }
+.loja span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; text-align: left; }
+.loja small { font-size: 0.68rem; opacity: 0.8; letter-spacing: 0.02em; }
+.loja b { font-size: 1rem; font-weight: 700; }
+.lojas--escuro .loja { border-color: rgba(242, 246, 255, 0.28); }
+.rodape .loja { color: #FFFFFF; }
+.lojas__aviso { margin: 0; border-radius: 12px; padding: 12px 14px; font-size: 0.9rem; line-height: 1.5; max-width: 42ch; }
+.lojas__aviso:empty { display: none; }
+.lojas--claro .lojas__aviso { background: #EAF2FF; color: #0F1B33; }
+.lojas--escuro .lojas__aviso { background: #13234A; color: #F2F6FF; }
+@media (prefers-reduced-motion: no-preference) {
+  .lojas__aviso:not(:empty) { animation: aparecer 220ms var(--sc-ease-out) both; }
+  @keyframes aparecer { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}

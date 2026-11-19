@@ -17,13 +17,14 @@ const supabase = createClient(
 const LIMITE_VAGAS = 50;
 const WHATSAPP_SUPORTE = 'https://wa.me/5594991040902';
 const WHATSAPP_TEXTO = '(94) 99104-0902';
+const APP_STORE = 'https://apps.apple.com/br/app/id6814965278';
 const TERMOS = 'https://docs.google.com/document/d/e/2PACX-1vRb2YzC22gxBxNKthDb4872lOAMv-qydh-fs-m3rzuNroBG9EpOSfbrJMZExJVQNIyagfk3GxdP09ns/pub';
 
 const RAMOS = ['eletricista', 'encanador', 'manicure', 'diarista', 'mecânico', 'restaurante', 'pet shop'];
 
 const ELITE = {
-  mensal: { plano: 'Plano Elite Mensal', preco: 'R$ 29,99', unidade: 'por mês', ganho: 'Cobrado no cartão todo mês.', regra: 'Renova sozinho todo mês. Cancele quando quiser, sem multa.' },
-  anual: { plano: 'Plano Elite Anual', preco: 'R$ 282,50', unidade: 'por ano', ganho: 'Equivale a R$ 23,54 por mês. Você economiza R$ 77,38.', regra: 'Pagamento único, no Pix ou no cartão. Não renova sozinho: avisamos 3 dias antes de vencer.' },
+  mensal: { plano: 'Plano Elite Mensal', preco: 'R$ 39,90', unidade: 'por mês', ganho: 'Cobrado no cartão todo mês.', regra: 'Renova sozinho todo mês. Cancele quando quiser, sem multa.' },
+  anual: { plano: 'Plano Elite Anual', preco: 'R$ 375,90', unidade: 'por ano', ganho: 'Equivale a R$ 31,33 por mês. Você economiza R$ 102,90.', regra: 'Pagamento único, no Pix ou no cartão. Não renova sozinho: avisamos 3 dias antes de vencer.' },
 } as const;
 
 const NOME_PLANO: Record<string, string> = {
@@ -77,6 +78,40 @@ const IconeZap = () => (
     <path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.5A8.4 8.4 0 1 1 21 11.5z" />
   </svg>
 );
+
+/* ---------- baixar o app: iPhone na App Store; Android ainda não saiu ---------- */
+function BotoesLojas({ tema = 'escuro' }: { tema?: 'claro' | 'escuro' }) {
+  const [avisoAndroid, setAvisoAndroid] = useState(false);
+
+  // o balão some sozinho depois de alguns segundos
+  useEffect(() => {
+    if (!avisoAndroid) return;
+    const t = setTimeout(() => setAvisoAndroid(false), 6000);
+    return () => clearTimeout(t);
+  }, [avisoAndroid]);
+
+  return (
+    <div className={`lojas lojas--${tema}`}>
+      <div className="lojas__botoes">
+        <a className="loja" href={APP_STORE} target="_blank" rel="noopener noreferrer">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.17 2.31-.93 3.57-.84 1.51.15 2.65.72 3.4 1.8-3.04 1.75-2.5 5.92.51 7.14-.65 1.55-1.57 3-2.56 4.07zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+          </svg>
+          <span><small>Baixar na</small><b>App Store</b></span>
+        </a>
+        <button type="button" className="loja" onClick={() => setAvisoAndroid(true)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M4 3.25c-.2.2-.3.51-.3.91v15.68c0 .4.1.71.3.91l.06.06 8.35-8.35v-.26L4.06 3.19l-.06.06zm8.88 8.88l1.81 1.81-2.95 1.7-7.46 4.29c-.24.14-.52.22-.8.22-.3 0-.58-.09-.81-.25l10.21-7.77zm0-.26l-10.2-7.77c.23-.16.51-.25.81-.25.28 0 .56.08.8.22l7.46 4.29 2.95 1.7-1.82 1.81zm2.34 2.34l-1.81-1.81v-.26l1.81-1.81 2.16 1.23c.69.39.69 1.03 0 1.42l-2.16 1.23z" />
+          </svg>
+          <span><small>Em breve no</small><b>Google Play</b></span>
+        </button>
+      </div>
+      <p className="lojas__aviso" role="status" aria-live="polite">
+        {avisoAndroid ? 'O Maply para Android chega em breve. Por enquanto, ele está disponível só para iPhone.' : ''}
+      </p>
+    </div>
+  );
+}
 
 export default function PaginaPremium() {
   /* ---------- conta ---------- */
@@ -533,6 +568,7 @@ export default function PaginaPremium() {
                     <>
                       <h3>{isPrestador ? 'Seu perfil está no plano grátis' : 'Os planos são para prestadores'}</h3>
                       <p>{isPrestador ? 'Escolha um plano abaixo para subir na busca.' : 'Cadastre seu negócio no app Maply e volte aqui com a mesma conta para assinar.'}</p>
+                      {!isPrestador && <div style={{ marginTop: 14 }}><BotoesLojas /></div>}
                     </>
                   )}
                   <p className="conta">Conectado como {user.email}</p>
@@ -578,8 +614,8 @@ export default function PaginaPremium() {
               {mostrarFundador && (
                 <article className="plano plano--fundador" aria-labelledby="t-fundador">
                   <h3 id="t-fundador">Fundador</h3>
-                  <p className="preco"><b>R$ 149,99</b><span>por 2 anos</span></p>
-                  <p className="ganho">Equivale a R$ 6,25 por mês.</p>
+                  <p className="preco"><b>R$ 199,90</b><span>por 2 anos</span></p>
+                  <p className="ganho">Equivale a R$ 8,33 por mês.</p>
                   <p className="regra">Tudo do Elite por 24 meses, com um pagamento só, no Pix ou no cartão. Lote de lançamento: {textoVagas}.</p>
                   <ul>
                     {['Todos os benefícios do Elite', 'Sem mensalidade', 'Não renova sozinho'].map((b) => (
@@ -620,6 +656,7 @@ export default function PaginaPremium() {
 
             <footer className="rodape">
               <span className="marca-rodape">Maply</span>
+              <BotoesLojas />
               <a className="suporte" href={WHATSAPP_SUPORTE} target="_blank" rel="noopener noreferrer"><IconeZap />Suporte: {WHATSAPP_TEXTO}</a>
               <a href={TERMOS} target="_blank" rel="noopener noreferrer">Termos de uso e privacidade</a>
               <span>Pagamentos processados pelo Mercado Pago.</span>
@@ -673,7 +710,8 @@ export default function PaginaPremium() {
             </svg>
             Continuar com a Apple
           </button>
-          <p style={{ fontSize: '0.85rem' }}>Ainda não tem conta? Crie pelo app Maply.</p>
+          <p style={{ fontSize: '0.85rem' }}>Ainda não tem conta? Crie pelo app Maply, é grátis.</p>
+          <BotoesLojas tema="claro" />
         </div>
       </dialog>
     </>

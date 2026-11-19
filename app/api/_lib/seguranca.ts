@@ -7,9 +7,9 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://maply-premi
 // Preços oficiais: o navegador só escolhe o plano, quem define o valor é o servidor.
 // Se mudar um preço aqui, atualize também o texto exibido em app/page.tsx.
 export const PLANOS: Record<string, { id: 'fundador' | 'anual' | 'mensal'; preco: number }> = {
-  'Plano Fundador': { id: 'fundador', preco: 149.99 },
-  'Plano Elite Anual': { id: 'anual', preco: 282.50 },
-  'Plano Elite Mensal': { id: 'mensal', preco: 29.99 },
+  'Plano Fundador': { id: 'fundador', preco: 199.90 },
+  'Plano Elite Anual': { id: 'anual', preco: 375.90 },
+  'Plano Elite Mensal': { id: 'mensal', preco: 39.90 },
 };
 
 export const PRECO_POR_ID: Record<string, number> = Object.fromEntries(
